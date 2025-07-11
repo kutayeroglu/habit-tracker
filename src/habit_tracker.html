@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Productivity Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .tracker-card,
+        .view-card,
+        .summary-card {
+            transition: all 0.3s ease-in-out;
+        }
+
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-yes.active {
+            background-color: #10B981;
+            color: white;
+            border-color: #10B981;
+        }
+
+        .btn-no.active {
+            background-color: #EF4444;
+            color: white;
+            border-color: #EF4444;
+        }
+
+        #success-message,
+        #error-modal {
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .task-item,
+        .summary-card {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .spinner {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-2xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 dark:text-white">Daily Productivity Tracker</h1>
+            <p id="header-subtitle" class="text-gray-600 dark:text-gray-400 mt-2">Choose a mode to get started.</p>
+        </header>
+
+        <div id="app-loading" class="text-center">
+            <p>Loading...</p>
+        </div>
+
+        <!-- Mode Selection -->
+        <div id="mode-selection-container" class="hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row gap-4">
+                <button id="select-edit-mode"
+                    class="btn flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg">📝 Edit
+                    Mode</button>
+                <button id="select-view-mode"
+                    class="btn flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg">📊 View
+                    Mode</button>
+            </div>
+        </div>
+
+        <!-- Main App Container (hidden initially) -->
+        <div id="app-container" class="hidden">
+            <!-- Daily View Container -->
+            <div id="daily-view-wrapper">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 items-center">
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg">
+                        <div class="flex justify-between items-center mb-2">
+                            <label for="date-picker"
+                                class="block text-lg font-medium text-gray-700 dark:text-gray-300">Selected Date</label>
+                            <span id="formatted-date-display"
+                                class="font-semibold text-lg text-indigo-600 dark:text-indigo-400"></span>
+                        </div>
+                        <input type="date" id="date-picker"
+                            class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <button id="switch-mode-btn"
+                        class="btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg h-full">Switch
+                        Mode</button>
+                </div>
+
+                <!-- Edit Mode -->
+                <div id="edit-mode-container" class="space-y-6 hidden">
+                    <!-- Cards for editing -->
+                    <div class="tracker-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4">🧘 Meditated Today?</h2>
+                        <div class="flex space-x-4">
+                            <button id="meditate-yes"
+                                class="btn btn-yes flex-1 py-3 px-4 rounded-lg border-2 border-gray-300 dark:border-gray-600 font-medium">Yes</button>
+                            <button id="meditate-no"
+                                class="btn btn-no flex-1 py-3 px-4 rounded-lg border-2 border-gray-300 dark:border-gray-600 font-medium">No</button>
+                        </div>
+                    </div>
+                    <div class="tracker-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4">⏱️ Log Time on Task</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="task-select"
+                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Task</label>
+                                <select id="task-select"
+                                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5"></select>
+                            </div>
+                            <div>
+                                <label for="subtask-select"
+                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subtask</label>
+                                <select id="subtask-select"
+                                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5"></select>
+                            </div>
+                        </div>
+                        <div class="flex items-end gap-4">
+                            <div class="flex-grow">
+                                <label for="task-time-input"
+                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Minutes</label>
+                                <input type="number" id="task-time-input" placeholder="e.g., 45"
+                                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5">
+                            </div>
+                            <button id="add-task-time-btn"
+                                class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2.5 px-4 rounded-lg h-fit">Add</button>
+                        </div>
+                        <div id="logged-tasks-list" class="mt-6 space-y-2"></div>
+                    </div>
+                    <div class="tracker-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4">🍳 Cooked Today (times)</h2>
+                        <input type="number" id="cooked-count" placeholder="e.g., 2"
+                            class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 text-gray-900 dark:text-white">
+                    </div>
+                    <div class="tracker-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4">🥡 Ordered Food (times)</h2>
+                        <input type="number" id="ordered-food-count" placeholder="e.g., 1"
+                            class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 text-gray-900 dark:text-white">
+                    </div>
+                    <div class="mt-6 flex items-center justify-end gap-4">
+                        <div id="success-message" class="text-green-500 opacity-0">Changes saved!</div>
+                        <button id="save-changes-btn"
+                            class="btn bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            disabled>Save Changes</button>
+                    </div>
+                </div>
+
+                <!-- View Mode -->
+                <div id="view-mode-container" class="space-y-6 hidden">
+                    <div class="view-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-semibold">📊 Daily Summary</h2>
+                            <button id="historic-summary-btn"
+                                class="btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg">🗓️
+                                Historic Summary</button>
+                        </div>
+                        <div id="view-summary-list" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historic View Container -->
+            <div id="historic-view-wrapper" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Historic Summary</h2>
+                    <button id="back-to-daily-btn"
+                        class="btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">← Back to
+                        Daily View</button>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg mb-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label for="month-select"
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Month</label>
+                            <select id="month-select"
+                                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5"></select>
+                        </div>
+                        <div>
+                            <label for="year-select"
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Year</label>
+                            <select id="year-select"
+                                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5"></select>
+                        </div>
+                        <div class="self-end">
+                            <button id="get-historic-summary-btn"
+                                class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold w-full py-2.5 px-4 rounded-lg">Get
+                                Summary</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="historic-summary-loading" class="text-center hidden py-8">
+                    <div class="spinner h-10 w-10 rounded-full border-4 border-gray-200 mx-auto mb-4"></div>
+                    <p>Fetching and calculating summary...</p>
+                </div>
+                <div id="weekly-summary-container" class="space-y-6"></div>
+            </div>
+        </div>
+
+        <footer class="text-center mt-8">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Your User ID: <span id="user-id-display"
+                    class="font-mono"></span></p>
+        </footer>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 max-w-sm w-full text-center">
+            <h3 class="text-xl font-bold text-red-500 mb-4">Invalid Input</h3>
+            <p id="error-message" class="text-gray-700 dark:text-gray-300 mb-6"></p>
+            <button id="close-error-modal-btn"
+                class="btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg">Close</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+
+            apiKey: "AIzaSyDn22zQDMRQRbocAZQm1bbcMgmHMQxY6SA",
+
+            authDomain: "productivitytracker-b19f9.firebaseapp.com",
+
+            projectId: "productivitytracker-b19f9",
+
+            storageBucket: "productivitytracker-b19f9.firebasestorage.app",
+
+            messagingSenderId: "234963161203",
+
+            appId: "1:234963161203:web:f953650d06705da721da06"
+
+        };
+        const appId = firebaseConfig.appId;
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- DOM Elements ---
+        const appLoading = document.getElementById('app-loading');
+        const headerSubtitle = document.getElementById('header-subtitle');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const modeSelectionContainer = document.getElementById('mode-selection-container');
+        const selectEditModeBtn = document.getElementById('select-edit-mode');
+        const selectViewModeBtn = document.getElementById('select-view-mode');
+        const appContainer = document.getElementById('app-container');
+        const dailyViewWrapper = document.getElementById('daily-view-wrapper');
+        const historicViewWrapper = document.getElementById('historic-view-wrapper');
+        const switchModeBtn = document.getElementById('switch-mode-btn');
+        const datePicker = document.getElementById('date-picker');
+        const formattedDateDisplay = document.getElementById('formatted-date-display');
+        const editModeContainer = document.getElementById('edit-mode-container');
+        const meditateYesBtn = document.getElementById('meditate-yes');
+        const meditateNoBtn = document.getElementById('meditate-no');
+        const cookedCountInput = document.getElementById('cooked-count');
+        const orderedFoodCountInput = document.getElementById('ordered-food-count');
+        const saveChangesBtn = document.getElementById('save-changes-btn');
+        const successMessage = document.getElementById('success-message');
+        const viewModeContainer = document.getElementById('view-mode-container');
+        const viewSummaryList = document.getElementById('view-summary-list');
+        const errorModal = document.getElementById('error-modal');
+        const errorMessage = document.getElementById('error-message');
+        const closeErrorModalBtn = document.getElementById('close-error-modal-btn');
+        const taskSelect = document.getElementById('task-select');
+        const subtaskSelect = document.getElementById('subtask-select');
+        const taskTimeInput = document.getElementById('task-time-input');
+        const addTaskTimeBtn = document.getElementById('add-task-time-btn');
+        const loggedTasksList = document.getElementById('logged-tasks-list');
+        // Historic View Elements
+        const historicSummaryBtn = document.getElementById('historic-summary-btn');
+        const backToDailyBtn = document.getElementById('back-to-daily-btn');
+        const monthSelect = document.getElementById('month-select');
+        const yearSelect = document.getElementById('year-select');
+        const getHistoricSummaryBtn = document.getElementById('get-historic-summary-btn');
+        const historicSummaryLoading = document.getElementById('historic-summary-loading');
+        const weeklySummaryContainer = document.getElementById('weekly-summary-container');
+
+        // --- App State ---
+        let userId = null;
+        let currentMode = null;
+        let unsubscribe = null;
+        let initialData = {};
+        let localDataState = {};
+        let isDirty = false;
+
+        const taskHierarchy = {
+            "Work": ["Project A", "Project B", "Emails", "Meetings", "Deep Work"],
+            "Personal": ["Reading", "Exercise", "Hobbies", "Chores"],
+            "Learning": ["Coding", "Language", "Coursework", "Research"]
+        };
+
+        // --- Authentication ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                userIdDisplay.textContent = userId;
+                initializeTaskDropdowns();
+                initializeHistoricSelectors();
+                showModeSelection();
+            } else {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Authentication failed:", error);
+                    appLoading.textContent = "Authentication failed. Please refresh.";
+                }
+            }
+        });
+
+        // --- View & Mode Switching ---
+        function showModeSelection() {
+            appLoading.classList.add('hidden');
+            appContainer.classList.add('hidden');
+            modeSelectionContainer.classList.remove('hidden');
+            headerSubtitle.textContent = "Choose a mode to get started.";
+            if (unsubscribe) unsubscribe();
+        }
+
+        function initializeAppForMode(mode) {
+            currentMode = mode;
+            modeSelectionContainer.classList.add('hidden');
+            appContainer.classList.remove('hidden');
+            dailyViewWrapper.classList.remove('hidden');
+            historicViewWrapper.classList.add('hidden');
+            editModeContainer.classList.toggle('hidden', mode !== 'edit');
+            viewModeContainer.classList.toggle('hidden', mode !== 'view');
+            headerSubtitle.textContent = mode === 'edit' ? "Log your daily progress." : "View your daily summary.";
+            const today = new Date();
+            datePicker.value = today.toISOString().split('T')[0];
+            handleDateChange();
+        }
+
+        function showHistoricView() {
+            dailyViewWrapper.classList.add('hidden');
+            historicViewWrapper.classList.remove('hidden');
+            headerSubtitle.textContent = "Review your progress over time.";
+        }
+
+        function showDailyView() {
+            historicViewWrapper.classList.add('hidden');
+            dailyViewWrapper.classList.remove('hidden');
+            headerSubtitle.textContent = currentMode === 'edit' ? "Log your daily progress." : "View your daily summary.";
+        }
+
+        // --- Initialization ---
+        function initializeTaskDropdowns() {
+            taskSelect.innerHTML = Object.keys(taskHierarchy).map(task => `<option value="${task}">${task}</option>`).join('');
+            updateSubtaskDropdown();
+        }
+
+        function initializeHistoricSelectors() {
+            const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            monthSelect.innerHTML = months.map((month, i) => `<option value="${i}">${month}</option>`).join('');
+
+            const currentYear = new Date().getFullYear();
+            let yearOptions = '';
+            for (let i = 0; i < 5; i++) {
+                const year = currentYear - i;
+                yearOptions += `<option value="${year}">${year}</option>`;
+            }
+            yearSelect.innerHTML = yearOptions;
+
+            monthSelect.value = new Date().getMonth();
+            yearSelect.value = currentYear;
+        }
+
+        function updateSubtaskDropdown() {
+            const selectedTask = taskSelect.value;
+            subtaskSelect.innerHTML = taskHierarchy[selectedTask].map(subtask => `<option value="${subtask}">${subtask}</option>`).join('');
+        }
+
+        // --- Data Handling ---
+        function getDocRefForDate(dateStr) {
+            if (!userId) return null;
+            const collectionPath = `artifacts/${appId}/users/${userId}/productivity_data`;
+            return doc(db, collectionPath, dateStr);
+        }
+
+        function handleDateChange() {
+            const selectedDate = datePicker.value;
+            updateFormattedDateDisplay(selectedDate);
+            if (!selectedDate || !userId) return;
+            if (unsubscribe) unsubscribe();
+
+            const docRef = getDocRefForDate(selectedDate);
+            if (!docRef) return;
+
+            unsubscribe = onSnapshot(docRef, (docSnap) => {
+                const data = docSnap.exists() ? docSnap.data() : {};
+                initialData = JSON.parse(JSON.stringify(data));
+                localDataState = JSON.parse(JSON.stringify(data));
+
+                if (currentMode === 'edit') {
+                    updateEditUI(localDataState);
+                } else {
+                    updateViewUI(localDataState);
+                }
+                checkForChanges();
+            }, (error) => console.error("Error listening to document:", error));
+        }
+
+        async function saveChanges() {
+            if (!isDirty || !validateInputs()) return;
+            const selectedDate = datePicker.value;
+            if (!selectedDate || !userId) return;
+
+            const docRef = getDocRefForDate(selectedDate);
+            if (!docRef) return;
+
+            try {
+                await setDoc(docRef, { ...localDataState, date: selectedDate });
+                initialData = JSON.parse(JSON.stringify(localDataState));
+                checkForChanges();
+                showSuccessMessage();
+            } catch (error) {
+                console.error("Error saving data: ", error);
+            }
+        }
+
+        // --- Historic Summary Logic ---
+        async function fetchAndProcessHistoricData() {
+            historicSummaryLoading.classList.remove('hidden');
+            weeklySummaryContainer.innerHTML = '';
+
+            const year = parseInt(yearSelect.value);
+            const month = parseInt(monthSelect.value);
+
+            const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+            const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+            const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/productivity_data`);
+            const q = query(collectionRef, where("date", ">=", startDate), where("date", "<=", endDate));
+
+            try {
+                const querySnapshot = await getDocs(q);
+                const docs = querySnapshot.docs.map(doc => doc.data());
+
+                if (docs.length === 0) {
+                    weeklySummaryContainer.innerHTML = `<p class="text-center text-gray-500">No data found for the selected period.</p>`;
+                    return;
+                }
+
+                const weeklyData = processDataIntoWeeks(docs);
+                renderWeeklySummaries(weeklyData);
+
+            } catch (error) {
+                console.error("Error fetching historic data:", error);
+                showErrorModal("Could not fetch historic data. Please try again.");
+            } finally {
+                historicSummaryLoading.classList.add('hidden');
+            }
+        }
+
+        function processDataIntoWeeks(docs) {
+            const weeklyAggregates = {};
+
+            const getWeekKey = (d) => {
+                const date = new Date(d.getTime());
+                const day = date.getDay() || 7;
+                date.setDate(date.getDate() + 4 - day);
+                const year = date.getFullYear();
+                const weekNo = Math.ceil((((date - new Date(year, 0, 1)) / 86400000) + 1) / 7);
+                return `${year}-W${String(weekNo).padStart(2, '0')}`;
+            };
+
+            docs.forEach(doc => {
+                const date = new Date(doc.date + 'T00:00:00'); // Ensure local timezone
+                const weekKey = getWeekKey(date);
+
+                if (!weeklyAggregates[weekKey]) {
+                    weeklyAggregates[weekKey] = {
+                        meditatedDays: 0,
+                        totalCooked: 0,
+                        totalOrdered: 0,
+                        totalTasks: {},
+                        dayCount: 0,
+                        startDate: date,
+                        endDate: date,
+                    };
+                }
+
+                const week = weeklyAggregates[weekKey];
+                week.dayCount++;
+                if (doc.meditated) week.meditatedDays++;
+                week.totalCooked += doc.cookedCount || 0;
+                week.totalOrdered += doc.orderedFoodCount || 0;
+
+                if (doc.tasks) {
+                    for (const task in doc.tasks) {
+                        for (const subtask in doc.tasks[task]) {
+                            const key = `${task} - ${subtask}`;
+                            week.totalTasks[key] = (week.totalTasks[key] || 0) + doc.tasks[task][subtask];
+                        }
+                    }
+                }
+
+                if (date < week.startDate) week.startDate = date;
+                if (date > week.endDate) week.endDate = date;
+            });
+
+            return weeklyAggregates;
+        }
+
+        function renderWeeklySummaries(weeklyData) {
+            const sortedWeeks = Object.keys(weeklyData).sort();
+            if (sortedWeeks.length === 0) {
+                weeklySummaryContainer.innerHTML = `<p class="text-center text-gray-500">No data found for the selected period.</p>`;
+                return;
+            }
+
+            let html = '';
+            sortedWeeks.forEach(weekKey => {
+                const week = weeklyData[weekKey];
+                const formatDate = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+                html += `<div class="summary-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                    <h3 class="text-lg font-bold mb-3 text-indigo-600 dark:text-indigo-400">Week: ${formatDate(week.startDate)} - ${formatDate(week.endDate)}</h3>
+                    <div class="space-y-2">
+                        <p><strong>Meditation:</strong> ${week.meditatedDays} / ${week.dayCount} days</p>
+                        <p><strong>Cooked:</strong> ${week.totalCooked} times</p>
+                        <p><strong>Ordered Food:</strong> ${week.totalOrdered} times</p>
+                        <div><strong>Tasks Summary:</strong>`;
+
+                if (Object.keys(week.totalTasks).length > 0) {
+                    html += `<ul class="list-disc list-inside mt-1 pl-2">`;
+                    for (const taskKey in week.totalTasks) {
+                        html += `<li>${taskKey}: ${week.totalTasks[taskKey]} minutes</li>`;
+                    }
+                    html += `</ul>`;
+                } else {
+                    html += `<span class="ml-2 text-gray-500">No tasks logged.</span>`;
+                }
+                html += `</div></div></div>`;
+            });
+            weeklySummaryContainer.innerHTML = html;
+        }
+
+
+        // --- UI Update & State Functions ---
+        function updateFormattedDateDisplay(dateString) {
+            if (!dateString) {
+                formattedDateDisplay.textContent = '';
+                return;
+            }
+            const [year, month, day] = dateString.split('-');
+            formattedDateDisplay.textContent = `${day}/${month}/${year}`;
+        }
+
+        function updateEditUI(data) {
+            meditateYesBtn.classList.toggle('active', data.meditated === true);
+            meditateNoBtn.classList.toggle('active', data.meditated === false);
+            cookedCountInput.value = data.cookedCount ?? '';
+            orderedFoodCountInput.value = data.orderedFoodCount ?? '';
+            renderLoggedTasks();
+        }
+
+        function renderLoggedTasks() {
+            loggedTasksList.innerHTML = '';
+            if (!localDataState.tasks) return;
+
+            for (const task in localDataState.tasks) {
+                for (const subtask in localDataState.tasks[task]) {
+                    const minutes = localDataState.tasks[task][subtask];
+                    if (minutes > 0) {
+                        const taskItem = document.createElement('div');
+                        taskItem.className = 'task-item flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-lg';
+                        taskItem.innerHTML = `
+                            <span><strong>${task}</strong> - ${subtask}: ${minutes} min</span>
+                            <button data-task="${task}" data-subtask="${subtask}" class="remove-task-btn text-red-500 hover:text-red-700 font-bold">✖</button>
+                        `;
+                        loggedTasksList.appendChild(taskItem);
+                    }
+                }
+            }
+        }
+
+        function updateViewUI(data) {
+            viewSummaryList.innerHTML = '';
+
+            let meditatedText = 'Not Logged';
+            let meditatedColor = 'text-gray-500';
+            if (data.meditated === true) {
+                meditatedText = 'Yes';
+                meditatedColor = 'text-green-500';
+            } else if (data.meditated === false) {
+                meditatedText = 'No';
+                meditatedColor = 'text-red-500';
+            }
+            viewSummaryList.innerHTML += createSummaryItem('🧘 Meditated', `<span class="font-bold text-lg ${meditatedColor}">${meditatedText}</span>`);
+
+            if (data.tasks && Object.keys(data.tasks).length > 0) {
+                let tasksHtml = '<div class="space-y-1">';
+                let taskFound = false;
+                Object.entries(data.tasks).forEach(([task, subtasks]) => {
+                    Object.entries(subtasks).forEach(([subtask, minutes]) => {
+                        if (minutes > 0) {
+                            taskFound = true;
+                            tasksHtml += `<div class="text-right">${task} - ${subtask}: <strong>${minutes} min</strong></div>`;
+                        }
+                    });
+                });
+                tasksHtml += '</div>';
+                if (taskFound) {
+                    viewSummaryList.innerHTML += createSummaryItem('⏱️ Time on Task', tasksHtml);
+                } else {
+                    viewSummaryList.innerHTML += createSummaryItem('⏱️ Time on Task', 'Not Logged');
+                }
+            } else {
+                viewSummaryList.innerHTML += createSummaryItem('⏱️ Time on Task', 'Not Logged');
+            }
+
+            viewSummaryList.innerHTML += createSummaryItem('🍳 Cooked', data.cookedCount != null ? `${data.cookedCount} times` : 'Not Logged');
+            viewSummaryList.innerHTML += createSummaryItem('🥡 Ordered Food', data.orderedFoodCount != null ? `${data.orderedFoodCount} times` : 'Not Logged');
+        }
+
+        function createSummaryItem(label, value) {
+            return `<div class="flex justify-between items-start">
+                        <span class="text-gray-600 dark:text-gray-300">${label}:</span>
+                        <span class="font-bold text-lg text-right">${value}</span>
+                    </div>`;
+        }
+
+        function checkForChanges() {
+            isDirty = JSON.stringify(localDataState) !== JSON.stringify(initialData);
+            saveChangesBtn.disabled = !isDirty;
+        }
+
+        function showSuccessMessage() {
+            successMessage.classList.remove('opacity-0');
+            setTimeout(() => successMessage.classList.add('opacity-0'), 2000);
+        }
+
+        function showErrorModal(message) {
+            errorMessage.textContent = message;
+            errorModal.classList.remove('hidden');
+        }
+
+        function hideErrorModal() {
+            errorModal.classList.add('hidden');
+        }
+
+        function validateInputs() {
+            const cookedCount = cookedCountInput.value !== '' ? parseInt(cookedCountInput.value, 10) : null;
+            const orderedFoodCount = orderedFoodCountInput.value !== '' ? parseInt(orderedFoodCountInput.value, 10) : null;
+
+            if (cookedCount != null && (cookedCount < 0 || cookedCount > 4)) {
+                showErrorModal("'Cooked Today' must be between 0 and 4.");
+                return false;
+            }
+            if (orderedFoodCount != null && (orderedFoodCount < 0 || orderedFoodCount > 4)) {
+                showErrorModal("'Ordered Food' must be between 0 and 4.");
+                return false;
+            }
+            return true;
+        }
+
+        // --- Event Listeners ---
+        selectEditModeBtn.addEventListener('click', () => initializeAppForMode('edit'));
+        selectViewModeBtn.addEventListener('click', () => initializeAppForMode('view'));
+        switchModeBtn.addEventListener('click', showModeSelection);
+        datePicker.addEventListener('change', handleDateChange);
+        saveChangesBtn.addEventListener('click', saveChanges);
+        closeErrorModalBtn.addEventListener('click', hideErrorModal);
+        taskSelect.addEventListener('change', updateSubtaskDropdown);
+        historicSummaryBtn.addEventListener('click', showHistoricView);
+        backToDailyBtn.addEventListener('click', showDailyView);
+        getHistoricSummaryBtn.addEventListener('click', fetchAndProcessHistoricData);
+
+        editModeContainer.addEventListener('input', (e) => {
+            if (e.target.id === 'cooked-count' || e.target.id === 'ordered-food-count') {
+                localDataState[e.target.id.replace('-count', 'Count')] = e.target.value !== '' ? parseInt(e.target.value, 10) : null;
+                checkForChanges();
+            }
+        });
+
+        editModeContainer.addEventListener('click', (e) => {
+            if (e.target.id === 'meditate-yes' || e.target.id === 'meditate-no') {
+                localDataState.meditated = e.target.id === 'meditate-yes';
+                updateEditUI(localDataState);
+                checkForChanges();
+            }
+        });
+
+        addTaskTimeBtn.addEventListener('click', () => {
+            const minutes = parseInt(taskTimeInput.value, 10);
+            if (isNaN(minutes) || minutes < 0 || minutes > 720) {
+                showErrorModal("'Time on Task' must be between 0 and 720.");
+                return;
+            }
+
+            const task = taskSelect.value;
+            const subtask = subtaskSelect.value;
+
+            if (!localDataState.tasks) localDataState.tasks = {};
+            if (!localDataState.tasks[task]) localDataState.tasks[task] = {};
+
+            localDataState.tasks[task][subtask] = (localDataState.tasks[task][subtask] || 0) + minutes;
+
+            taskTimeInput.value = '';
+            renderLoggedTasks();
+            checkForChanges();
+        });
+
+        loggedTasksList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-task-btn')) {
+                const task = e.target.dataset.task;
+                const subtask = e.target.dataset.subtask;
+                delete localDataState.tasks[task][subtask];
+                if (Object.keys(localDataState.tasks[task]).length === 0) {
+                    delete localDataState.tasks[task];
+                }
+                renderLoggedTasks();
+                checkForChanges();
+            }
+        });
+
+    </script>
+</body>
+
+</html>
