@@ -86,7 +86,30 @@
             <p>Loading...</p>
         </div>
 
-        <!-- Mode Selection -->
+        <div id="login-container" class="hidden">
+            <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg max-w-md mx-auto text-center">
+                <h2 class="text-xl font-semibold mb-6">Sign In to Continue</h2>
+                <button id="google-login-btn"
+                    class="btn w-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold py-3 px-4 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-600">
+                    <svg class="w-5 h-5" viewBox="0 0 48 48">
+                        <path fill="#FFC107"
+                            d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z">
+                        </path>
+                        <path fill="#FF3D00"
+                            d="m6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z">
+                        </path>
+                        <path fill="#4CAF50"
+                            d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z">
+                        </path>
+                        <path fill="#1976D2"
+                            d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.021 35.596 44 30.138 44 24c0-1.341-.138-2.65-.389-3.917z">
+                        </path>
+                    </svg>
+                    Sign in with Google
+                </button>
+            </div>
+        </div>
+
         <div id="mode-selection-container" class="hidden">
             <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row gap-4">
                 <button id="select-edit-mode"
@@ -98,9 +121,7 @@
             </div>
         </div>
 
-        <!-- Main App Container (hidden initially) -->
         <div id="app-container" class="hidden">
-            <!-- Daily View Container -->
             <div id="daily-view-wrapper">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 items-center">
                     <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg">
@@ -118,9 +139,7 @@
                         Mode</button>
                 </div>
 
-                <!-- Edit Mode -->
                 <div id="edit-mode-container" class="space-y-6 hidden">
-                    <!-- Cards for editing -->
                     <div class="tracker-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
                         <h2 class="text-xl font-semibold mb-4">🧘 Meditated Today?</h2>
                         <div class="flex space-x-4">
@@ -176,7 +195,6 @@
                     </div>
                 </div>
 
-                <!-- View Mode -->
                 <div id="view-mode-container" class="space-y-6 hidden">
                     <div class="view-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
                         <div class="flex justify-between items-center mb-4">
@@ -190,7 +208,6 @@
                 </div>
             </div>
 
-            <!-- Historic View Container -->
             <div id="historic-view-wrapper" class="hidden">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Historic Summary</h2>
@@ -233,7 +250,6 @@
         </footer>
     </div>
 
-    <!-- Error Modal -->
     <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 max-w-sm w-full text-center">
             <h3 class="text-xl font-bold text-red-500 mb-4">Invalid Input</h3>
@@ -245,7 +261,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // MODIFIED: Import GoogleAuthProvider and signInWithPopup, remove signInWithEmailAndPassword
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -273,10 +290,14 @@
         const appLoading = document.getElementById('app-loading');
         const headerSubtitle = document.getElementById('header-subtitle');
         const userIdDisplay = document.getElementById('user-id-display');
+        const loginContainer = document.getElementById('login-container');
+        // MODIFIED: Get the new Google Login button
+        const googleLoginBtn = document.getElementById('google-login-btn');
         const modeSelectionContainer = document.getElementById('mode-selection-container');
         const selectEditModeBtn = document.getElementById('select-edit-mode');
         const selectViewModeBtn = document.getElementById('select-view-mode');
         const appContainer = document.getElementById('app-container');
+        // ... (rest of the DOM elements are the same)
         const dailyViewWrapper = document.getElementById('daily-view-wrapper');
         const historicViewWrapper = document.getElementById('historic-view-wrapper');
         const switchModeBtn = document.getElementById('switch-mode-btn');
@@ -299,7 +320,6 @@
         const taskTimeInput = document.getElementById('task-time-input');
         const addTaskTimeBtn = document.getElementById('add-task-time-btn');
         const loggedTasksList = document.getElementById('logged-tasks-list');
-        // Historic View Elements
         const historicSummaryBtn = document.getElementById('historic-summary-btn');
         const backToDailyBtn = document.getElementById('back-to-daily-btn');
         const monthSelect = document.getElementById('month-select');
@@ -307,6 +327,7 @@
         const getHistoricSummaryBtn = document.getElementById('get-historic-summary-btn');
         const historicSummaryLoading = document.getElementById('historic-summary-loading');
         const weeklySummaryContainer = document.getElementById('weekly-summary-container');
+
 
         // --- App State ---
         let userId = null;
@@ -323,31 +344,47 @@
         };
 
         // --- Authentication ---
-        onAuthStateChanged(auth, async (user) => {
+        onAuthStateChanged(auth, (user) => {
             if (user) {
+                // User is signed in, hide login and show the app
+                loginContainer.classList.add('hidden');
+                appLoading.classList.add('hidden');
+
                 userId = user.uid;
                 userIdDisplay.textContent = userId;
                 initializeTaskDropdowns();
                 initializeHistoricSelectors();
                 showModeSelection();
             } else {
-                try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (error) {
-                    console.error("Authentication failed:", error);
-                    appLoading.textContent = "Authentication failed. Please refresh.";
-                }
+                // User is signed out, show the login form
+                appLoading.classList.add('hidden');
+                appContainer.classList.add('hidden');
+                modeSelectionContainer.classList.add('hidden');
+                loginContainer.classList.remove('hidden');
+                headerSubtitle.textContent = "Please sign in to continue.";
+            }
+        });
+
+        // MODIFIED: Replaced email/password login with Google Sign-In
+        googleLoginBtn.addEventListener('click', async () => {
+            const provider = new GoogleAuthProvider();
+            try {
+                // This will open a popup for the user to sign in with their Google account
+                await signInWithPopup(auth, provider);
+                // After successful sign-in, the onAuthStateChanged listener above
+                // will automatically handle showing the application.
+            } catch (error) {
+                console.error("Google Sign-In failed:", error);
+                // The popup usually shows its own errors, but you can handle specific
+                // error codes here if needed (e.g., popup blocked).
+                showErrorModal(`Google Sign-In failed. Please try again. Error: ${error.code}`);
             }
         });
 
         // --- View & Mode Switching ---
         function showModeSelection() {
-            appLoading.classList.add('hidden');
             appContainer.classList.add('hidden');
+            loginContainer.classList.add('hidden');
             modeSelectionContainer.classList.remove('hidden');
             headerSubtitle.textContent = "Choose a mode to get started.";
             if (unsubscribe) unsubscribe();
@@ -379,6 +416,7 @@
             headerSubtitle.textContent = currentMode === 'edit' ? "Log your daily progress." : "View your daily summary.";
         }
 
+        // ... (rest of the script remains the same)
         // --- Initialization ---
         function initializeTaskDropdowns() {
             taskSelect.innerHTML = Object.keys(taskHierarchy).map(task => `<option value="${task}">${task}</option>`).join('');
@@ -446,11 +484,10 @@
 
             try {
                 await setDoc(docRef, { ...localDataState, date: selectedDate });
-                initialData = JSON.parse(JSON.stringify(localDataState));
-                checkForChanges();
                 showSuccessMessage();
             } catch (error) {
                 console.error("Error saving data: ", error);
+                showErrorModal("Failed to save changes. Please try again.");
             }
         }
 
